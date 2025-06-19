@@ -14,8 +14,8 @@ a minimalist real-time audio visualizer built with pygame, opengl, and sounddevi
 1. **clone the repository**
 
    ```bash
-   git clone https://github.com/your-username/audio_yoobilizer.git
-   cd audio_yoobilizer
+   git clone https://github.com/yoobzz/yoobilizer.git
+   cd yoobilizer
    ```
 
 2. **install python 3.10+**  
@@ -56,8 +56,8 @@ a minimalist real-time audio visualizer built with pygame, opengl, and sounddevi
 1. **clone the repository**
 
    ```cmd
-   git clone https://github.com/your-username/audio_yoobilizer.git
-   cd audio_yoobilizer
+   git clone https://github.com/yoobzz/yoobilizer.git
+   cd yoobilizer
    ```
 
 2. **install python 3.10+**  
@@ -106,8 +106,8 @@ minimalistyczny wizualizator audio w czasie rzeczywistym. zbudowany na pygame, o
 1. **sklonuj repozytorium**
 
    ```bash
-   git clone https://github.com/twoj-login/audio_yoobilizer.git
-   cd audio_yoobilizer
+   git clone https://github.com/yoobzz/yoobilizer.git
+   cd yoobilizer
    ```
 
 2. **zainstaluj pythona 3.10+**  
@@ -148,8 +148,8 @@ minimalistyczny wizualizator audio w czasie rzeczywistym. zbudowany na pygame, o
 1. **sklonuj repozytorium**
 
    ```cmd
-   git clone https://github.com/twoj-login/audio_yoobilizer.git
-   cd audio_yoobilizer
+   git clone https://github.com/yoobzz/yoobilizer.git
+   cd yoobilizer
    ```
 
 2. **zainstaluj python 3.10+**  
