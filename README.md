@@ -1,5 +1,6 @@
-# audio yoobilizer
 
+[![YouTube Video Thumbnail](https://img.youtube.com/vi/RVz9WbJfR54/1.jpg)](https://youtube.com/watch?v=RVz9WbJfR54)
+# audio yoobilizer
 a minimalist real-time audio visualizer built with pygame, opengl, and sounddevice. designed for experimental sound installations and live visual performance.
 
 ## requirements
