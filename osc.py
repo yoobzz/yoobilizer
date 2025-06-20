@@ -1,3 +1,5 @@
+#v4.131
+
 import pygame
 import numpy as np
 import sounddevice as sd
@@ -9,17 +11,17 @@ import sys
 import colorsys
 import random
 
-# Ustawienia audio
-SAMPLE_RATE = 44100
-BUFFER_SIZE = 1024
+#audio
+SAMPLE_RATE = 44100 
+BUFFER_SIZE = 2048   #
 audio_buffer = np.zeros(BUFFER_SIZE)
 
 # Parametry analizy audio
-BASS_RANGE = (20, 250)    # Hz
-MID_RANGE = (250, 2000)   # Hz
-TREBLE_RANGE = (2000, 8000)  # Hz
+BASS_RANGE = (20, 250)    
+MID_RANGE = (250, 4000)   
+TREBLE_RANGE = (4000, 16000)  
 
-# Kształty geometryczne z większą skalą
+
 scale_factors = {
     "cube": 5.0,
     "tetrahedron": 6.0,
@@ -30,14 +32,23 @@ scale_factors = {
     "superquadric": 5.0,
     "hyperquadric": 5.0,
     "eye": 4.0,
-    "torus": 1.0,
-    "spiral": 3.0
+    "torus": 5.0,
+    "spiral": 10.0,
+    "vortex": 8.0  # new shape in this v 
 }
 
-# Lista znaków specjalnych
-SPECIAL_CHARS = list("_!+||?_!@^^**__-+++-=")
+SPECIAL_CHARS = list("_!+||?_!@^^**__-+++-=<>/\\[]{}()~#$%&*^°±§")
+CHAR_GROUPS = [
+    r"+++---~~~",
+    r"|||///\\\\\\",
+    r"===!!!???",
+    r"[[[]]]{{{}}}",
+    r"^^^***###",
+    r"@@@$$$%%%",
+    r"&<>/\\~°±§"
+]
 
-# Podstawowe kształty
+
 cube_vertices = [
     (-1, -1, -1), (-1, -1, 1), (-1, 1, -1), (-1, 1, 1),
     (1, -1, -1), (1, -1, 1), (1, 1, -1), (1, 1, 1),
@@ -135,7 +146,7 @@ def hyperquadric_edges(n=40):
 
 def eye_vertices(n=30):
     verts = []
-    # Biała część oka (sclera)
+
     for i in range(n):
         theta = 2 * math.pi * i / n
         for j in range(n//2):
@@ -145,7 +156,7 @@ def eye_vertices(n=30):
             z = math.cos(phi)
             verts.append((x*3.0, y*3.0, z*3.0))
     
-    # Tęczówka (iris)
+
     iris_n = n//2
     iris_start = len(verts)
     for i in range(iris_n):
@@ -157,7 +168,7 @@ def eye_vertices(n=30):
             z = 2.8  # Wysunięta do przodu
             verts.append((x*3.0, y*3.0, z*3.0))
     
-    # Źrenica (pupil)
+
     pupil_center = len(verts)
     verts.append((0, 0, 2.9 * 3.0))
     
@@ -175,7 +186,7 @@ def eye_edges(n=30):
             if idx + n < n*(n//2):
                 edges.append((idx, idx+n))
     
-    # Połączenia dla tęczówki
+
     iris_start = n*(n//2)
     iris_n = n//2
     for i in range(iris_n):
@@ -187,14 +198,14 @@ def eye_edges(n=30):
             if idx + iris_n < iris_start + iris_n*(iris_n//2):
                 edges.append((idx, idx+iris_n))
     
-    # Połączenia między tęczówką a źrenicą
+
     pupil_center = iris_start + iris_n*(iris_n//2)
     for i in range(iris_n):
         edges.append((pupil_center, iris_start + i*(iris_n//2)))
     
     return edges
 
-def spiral_vertices(n=300, turns=50, radius=4.0, length=50):
+def spiral_vertices(n=500, turns=80, radius=15.0, length=75):
     verts = []
     for i in range(n):
         t = i / (n-1)
@@ -205,7 +216,7 @@ def spiral_vertices(n=300, turns=50, radius=4.0, length=50):
         verts.append((x, y, z))
     return verts
 
-def spiral_edges(n=300):
+def spiral_edges(n=500):
     return [(i, i+1) for i in range(n-1)]
 
 def torus_vertices(R=5, r=1.5, N=50, n=20):
@@ -229,13 +240,34 @@ def torus_edges(N=50, n=20):
             edges.append((idx, (idx + n) % (N * n)))
     return edges
 
-# Tworzenie geometrii
+def vortex_vertices(n=300, turns=50, radius=10.0, length=60):
+    verts = []
+    for i in range(n):
+        t = i / (n-1)
+        angle = 2 * math.pi * turns * t
+        r = radius * (1 - t*0.8) 
+        x = r * math.cos(angle)
+        y = r * math.sin(angle)
+        z = length * (t - 0.5)
+        verts.append((x, y, z))
+    return verts
+
+def vortex_edges(n=300):
+    edges = [(i, i+1) for i in range(n-1)]
+
+    for i in range(0, n-1, 5):
+        edges.append((i, min(i+5, n-1)))
+    return edges
+
+
 spiral_verts = spiral_vertices()
 spiral_edges = spiral_edges()
 torus_verts = torus_vertices()
 torus_edges = torus_edges()
+vortex_verts = vortex_vertices()
+vortex_edges = vortex_edges()
 
-# Lista kształtów
+
 shapes = [
     ("cube", cube_vertices, cube_edges),
     ("tetrahedron", tetra_vertices, tetra_edges),
@@ -247,7 +279,8 @@ shapes = [
     ("hyperquadric", hyperquadric_vertices(), hyperquadric_edges()),
     ("eye", eye_vertices(), eye_edges()),
     ("torus", torus_verts, torus_edges),
-    ("spiral", spiral_verts, spiral_edges)
+    ("spiral", spiral_verts, spiral_edges),
+    ("vortex", vortex_verts, vortex_edges)
 ]
 
 class AudioAnalyzer:
@@ -255,6 +288,9 @@ class AudioAnalyzer:
         self.sample_rate = sample_rate
         self.buffer_size = buffer_size
         self.fft_freqs = np.fft.rfftfreq(buffer_size, 1.0/sample_rate)
+        self.prev_bass = 0
+        self.prev_mid = 0
+        self.prev_treble = 0
         
     def get_frequency_energy(self, fft, freq_range):
         low, high = freq_range
@@ -267,10 +303,21 @@ class AudioAnalyzer:
         if np.max(fft) > 0:
             fft = fft / np.max(fft)
             
-        bass = self.get_frequency_energy(fft, BASS_RANGE)
-        mid = self.get_frequency_energy(fft, MID_RANGE)
-        treble = self.get_frequency_energy(fft, TREBLE_RANGE)
-        energy = (bass + mid + treble) / 3.0
+
+        bass = self.get_frequency_energy(fft, BASS_RANGE) ** 1.5
+        mid = self.get_frequency_energy(fft, MID_RANGE) ** 1.2
+        treble = self.get_frequency_energy(fft, TREBLE_RANGE) ** 0.8
+        
+
+        bass = 0.7 * bass + 0.3 * self.prev_bass
+        mid = 0.7 * mid + 0.3 * self.prev_mid
+        treble = 0.7 * treble + 0.3 * self.prev_treble
+        
+        self.prev_bass = bass
+        self.prev_mid = mid
+        self.prev_treble = treble
+        
+        energy = (bass * 0.4 + mid * 0.3 + treble * 0.3)
         
         return {
             'fft': fft,
@@ -308,29 +355,31 @@ def draw_floating_chars(font, angle, energy, bass, mid, treble):
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     
-    # Liczba znaków zależna od energii dźwięku
-    num_chars = int(10 + energy * 50 )
+
+    num_groups = int(5 + energy * 5)
     
-    for _ in range(num_chars):
-        # Losowa pozycja w przestrzeni 3D
+    for _ in range(num_groups):
+
         x = random.uniform(-20, 20)
         y = random.uniform(-20, 20)
         z = random.uniform(-20, 20)
         
-        # Losowy znak
-        char = random.choice(SPECIAL_CHARS)
+
+        char_group = random.choice(CHAR_GROUPS)
+        num_chars = random.randint(2, min(5, len(char_group)))
+        chars = char_group[:num_chars]
         
-        # Właściwości wizualne
-        size = int(10 + bass * 50)
-        hue = (angle * 0.01 + mid * 0.5) % 1.0
-        color = colorsys.hsv_to_rgb(hue, 0.9, 0.7 + mid * 0.3)
-        alpha = min(0.2 + energy * 0.8, 1.0)
+
+        size = int(10 + bass * 30 + treble * 20)
+        hue = (angle * 0.01 + mid * 0.5) % 100
+        color = (1.0, 1.0, 1.0)  # RGB values for white
+        alpha = min(0.3 + energy * 0.7, 1.0)
         
-        # Renderowanie tekstu na teksturze
-        text_surface = font.render(char, True, (int(color[0]*255), int(color[1]*255), int(color[2]*255)))
+
+        text_surface = font.render(chars, True, (int(color[0]*255), int(color[1]*255), int(color[2]*255)))
         text_data = pygame.image.tostring(text_surface, "RGBA", True)
         
-        # Tworzenie tekstury OpenGL
+
         text_id = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, text_id)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -338,14 +387,14 @@ def draw_floating_chars(font, angle, energy, bass, mid, treble):
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, text_surface.get_width(), text_surface.get_height(), 
                     0, GL_RGBA, GL_UNSIGNED_BYTE, text_data)
         
-        # Rysowanie tekstury jako billboard (zawsze zwrócona do kamery)
+
         glPushMatrix()
         glTranslatef(x, y, z)
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, text_id)
         glColor4f(1, 1, 1, alpha)
         
-        # Obliczenie rozmiaru
+
         scale = size / 56.0  # 32 to rozmiar czcionki
         
         glBegin(GL_QUADS)
@@ -398,6 +447,60 @@ def draw_torus(R, r, N, n, angle, bass, mid, treble):
     
     glEnd()
 
+def draw_torus_rays(R, r, angle, bass, mid, treble):
+    if bass < 0.2 and treble < 0.3:
+        return
+    
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glLineWidth(1.5 + bass*1)
+    
+    num_rays = 12 + int(bass * 12)
+    ray_length = 2.0 + bass * 8
+    
+    glBegin(GL_LINES)
+    
+    for i in range(num_rays):
+        theta = 2 * math.pi * i / num_rays
+        phi = math.pi * 0.5
+        
+
+        x = (R + r * math.cos(phi)) * math.cos(theta + angle * 0.01)
+        y = (R + r * math.cos(phi)) * math.sin(theta + angle * 0.01)
+        z = r * math.sin(phi)
+        
+
+        dir_x = math.cos(theta) * 0.7
+        dir_y = math.sin(theta) * 0.7
+        dir_z = 0.3
+        
+
+        hue = (theta / (2*math.pi) + angle * 0.005) % 1.0
+        intensity = 0.5 + 0.5 * (bass if i % 2 else treble)
+        r_c, g_c, b_c = neon_color(intensity, hue, 1.2)
+        
+
+        glColor3f(r_c, g_c, b_c)
+        glVertex3f(x, y, z)
+        glVertex3f(
+            x + dir_x * ray_length,
+            y + dir_y * ray_length,
+            z + dir_z * ray_length
+        )
+        
+
+        if bass > 0.4:
+            glColor4f(r_c*0.7, g_c*0.7, b_c*0.7, 0.6)
+            glVertex3f(x, y, z)
+            glVertex3f(
+                x + dir_x * ray_length * 0.6,
+                y + dir_y * ray_length * 0.6,
+                z + dir_z * ray_length * 0.6
+            )
+    
+    glEnd()
+    glDisable(GL_BLEND)
+
 def draw_spiral(vertices, edges, angle, bass, mid, treble):
     glLineWidth(1.0 + treble*3)
     glBegin(GL_LINES)
@@ -421,14 +524,40 @@ def draw_spiral(vertices, edges, angle, bass, mid, treble):
     
     glEnd()
 
+def draw_vortex(vertices, edges, angle, bass, mid, treble):
+    glLineWidth(1.0 + treble*4)
+    glBegin(GL_LINES)
+    
+    n = len(vertices)
+
+    for i in range(n-1):
+        t = i / (n-1)
+
+        intensity = 0.4 + 0.6 * (bass * 0.2 + mid * 0.3 + treble * 0.5)
+        hue = (t + angle * 0.02 + treble * 0.2) % 1.0
+        r_c, g_c, b_c = neon_color(intensity, hue, 1.2)
+        
+        glColor3f(r_c, g_c, b_c)
+        
+        glVertex3fv(vertices[i])
+        glVertex3fv(vertices[i+1])
+        
+
+        if i % 10 == 0 and (mid > 0.3 or treble > 0.4):
+            j = min(i + random.randint(5, 20), n-1)
+            glVertex3fv(vertices[i])
+            glVertex3fv(vertices[j])
+    
+    glEnd()
+
 def draw_eye(vertices, edges, angle, bass, mid, treble):
     glLineWidth(1.0 + treble*3)
     glBegin(GL_LINES)
     
     n = len(vertices)
-    iris_start = n//2  # Zakładamy, że tęczówka zaczyna się w połowie wierzchołków
+    iris_start = n//2  
     
-    # Rysowanie białej części oka
+
     for e in edges:
         if e[0] < iris_start and e[1] < iris_start:
             v1 = vertices[e[0]]
@@ -442,20 +571,20 @@ def draw_eye(vertices, edges, angle, bass, mid, treble):
             glVertex3fv(v1)
             glVertex3fv(v2)
     
-    # Rysowanie tęczówki i źrenicy
-    pupil_center = n - 1  # Ostatni wierzchołek to źrenica
+ 
+    pupil_center = n - 1  
     for e in edges:
         if e[0] >= iris_start or e[1] >= iris_start:
             v1 = vertices[e[0]]
             v2 = vertices[e[1]]
             
             if e[0] == pupil_center or e[1] == pupil_center:
-                # Źrenica - czarna
+
                 glColor3f(0, 0, 0)
             else:
-                # Tęczówka - kolorowa
+
                 intensity = 0.7 + 0.3 * mid
-                hue = (angle * 0.02 + 0.5) % 1.0  # Niebieskie/zielone odcienie
+                hue = (angle * 0.02 + 0.5) % 1.0  
                 r, g, b = neon_color(intensity, hue, 1.0)
                 glColor3f(r, g, b)
             
@@ -468,9 +597,9 @@ def draw_rays(base_vertices, angle, intensity, current_scale=1.0):
     if intensity < 0.1:
         return
         
-    scale_factor = current_scale * (1.0 + intensity * 2.0)
+    scale_factor = current_scale * (1.0 + intensity * 3.0)
     
-    glLineWidth(1.0 + intensity*3)
+    glLineWidth(1.0 + intensity*1)
     glBegin(GL_LINES)
     
     for i, v in enumerate(base_vertices):
@@ -542,7 +671,8 @@ def draw_wireframe(vertices, edges, angle, bass, mid, treble, shape_name):
 
 def get_current_shape_data(t, idx_from, idx_to):
     if shapes[idx_from][0] == "torus" or shapes[idx_to][0] == "torus" or \
-       shapes[idx_from][0] == "spiral" or shapes[idx_to][0] == "spiral":
+       shapes[idx_from][0] == "spiral" or shapes[idx_to][0] == "spiral" or \
+       shapes[idx_from][0] == "vortex" or shapes[idx_to][0] == "vortex":
         return [], []
     
     v1 = shapes[idx_from][1]
@@ -558,11 +688,10 @@ def main_loop():
     global audio_buffer
 
     pygame.init()
-    pygame.display.set_caption("Audio Wizualizacja 3D - Wireframe")
+    pygame.display.set_caption("yoobilizer")
     screen = pygame.display.set_mode((1280, 720), pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
     width, height = screen.get_size()
 
-    # Inicjalizacja czcionki
     font = init_font()
     
     glEnable(GL_DEPTH_TEST)
@@ -574,22 +703,23 @@ def main_loop():
     try:
         device_id = find_device('loopback') or find_device('blackhole')
         if device_id is None:
-            print("Nie znaleziono loopback/blackhole, używam domyślnego urządzenia")
+            print("could not find loopback/blackhole, using default input device")
             device_id = None
         stream = sd.InputStream(device=device_id, channels=1, callback=audio_callback,
                               blocksize=BUFFER_SIZE, samplerate=SAMPLE_RATE)
         stream.start()
     except Exception as e:
-        print(f"Błąd strumienia audio: {e}")
+        print(f"audio error: {e}")
         stream = None
 
     idx = 0
     next_idx = random.randint(1, len(shapes)-1)
-    transition_dur = 2.0
+    transition_dur = 1
     t_start = time.time()
     angle = 0
     torus_angle = 0
     spiral_angle = 0
+    vortex_angle = 0
     camera_distance = 50
     camera_angle_x = 0
     camera_angle_y = 0
@@ -609,7 +739,7 @@ def main_loop():
                 gluPerspective(60, width/height, 0.1, 175.0)
 
         now = time.time()
-        t = min((now - t_start) / transition_dur, 1.0)
+        t = min((now - t_start) / transition_dur, 2.0)
         
         analysis = audio_analyzer.analyze(audio_buffer)
         bass = analysis['bass']
@@ -620,10 +750,10 @@ def main_loop():
         glClearColor(0.05, 0.05, 0.1, 1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        # Dynamiczna kamera
-        camera_angle_x += 0.1 * energy
-        camera_angle_y += 0.07 * energy
-        camera_distance = 50 - 10 * bass
+
+        camera_angle_x += 0.1 * energy + 0.05 * bass
+        camera_angle_y += 0.07 * energy + 0.03 * mid
+        camera_distance = 50 - 5 * bass + 3 * treble
         
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -641,11 +771,13 @@ def main_loop():
 
         glPushMatrix()
         
-        rotation_speed = 0.5 + energy * 2.0
-        angle += rotation_speed * 0.016
+
+        rotation_speed = 0.5 + bass * 0.5 + mid * 0.3 + treble * 0.2
+        angle += rotation_speed * 0.040
         glRotatef(angle, 0.5, 1.0, 0.3)
         
-        scale = 0.5 + bass * 2
+
+        scale = 0.5 + bass * 1.5 + mid * 0.5
         glScalef(scale, scale, scale)
 
         current_shape = shapes[idx][0]
@@ -664,6 +796,7 @@ def main_loop():
             torus_angle += 2 + bass*10
             draw_torus(R=5, r=1.5, N=50, n=20, angle=torus_angle, 
                       bass=bass, mid=mid, treble=treble)
+            draw_torus_rays(R=5, r=1.5, angle=torus_angle, bass=bass, mid=mid, treble=treble)
         
         elif current_shape == "spiral" or next_shape == "spiral":
             if t < 0.5:
@@ -677,6 +810,19 @@ def main_loop():
             
             spiral_angle += 5 + bass*10
             draw_spiral(spiral_verts, spiral_edges, spiral_angle, bass, mid, treble)
+        
+        elif current_shape == "vortex" or next_shape == "vortex":
+            if t < 0.5:
+                verts, edges = get_current_shape_data(t*2, idx, idx)
+                if verts:
+                    draw_wireframe(verts, edges, angle, bass, mid, treble, current_shape)
+            elif t > 0.5:
+                verts, edges = get_current_shape_data((t-0.5)*2, next_idx, next_idx)
+                if verts:
+                    draw_wireframe(verts, edges, angle, bass, mid, treble, next_shape)
+            
+            vortex_angle += 8 + treble*15
+            draw_vortex(vortex_verts, vortex_edges, vortex_angle, bass, mid, treble)
         
         elif current_shape == "eye" or next_shape == "eye":
             if t < 0.5:
@@ -704,8 +850,10 @@ def main_loop():
         
         glPopMatrix()
 
-        # Rysowanie losowych znaków specjalnych
-        draw_floating_chars(font, angle, energy, bass, mid, treble)
+
+        if energy > 0.1:
+            draw_floating_chars(font, angle, energy, bass, mid, treble)
+
 
         if t >= 1.0 or (energy > 0.7 and t > 0.3):
             idx = next_idx
@@ -713,7 +861,7 @@ def main_loop():
             while next_idx == idx:
                 next_idx = random.randint(0, len(shapes)-1)
             t_start = now
-            transition_dur = 2.0 + random.random() * 1.0
+            transition_dur = 1.0 + random.random() * 1.0
             
         pygame.display.flip()
         clock.tick(60)
